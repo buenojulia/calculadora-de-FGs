@@ -1,0 +1,192 @@
+
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Calculadora de FGs</title>
+  <style>
+    :root{font-family:Inter, system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial;}
+    body{max-width:1100px;margin:28px auto;padding:18px;background:#FBF3D5;color:#111}
+    h1{font-size:20px;margin:0 0 12px}
+    .card{background:#fff;border-radius:12px;padding:16px;box-shadow:0 6px 18px rgba(10,10,10,0.06);margin-bottom:14px}
+    label{display:block;font-size:13px;margin-bottom:6px}
+    input[type=number], input[type=text]{padding:8px;border-radius:8px;border:1px solid #ddd;width:160px}
+    table{width:100%;border-collapse:collapse;margin-top:12px}
+    th,td{padding:8px;border-bottom:1px solid #eee;text-align:left;font-size:13px}
+    th{background:#fbfbfb;font-weight:600}
+    .muted{color:#666;font-size:12px}
+    .row{display:flex;gap:12px;flex-wrap:wrap}
+    button{background:#111;color:#fff;padding:8px 12px;border-radius:8px;border:0;cursor:pointer}
+    .small{font-size:12px;padding:6px 10px}
+    .export{display:flex;gap:8px;align-items:center}
+    @media(max-width:700px){body{padding:12px}}
+  </style>
+</head>
+<body>
+  <h1>Calculadora de FGs</h1>
+  <div class="card">
+    <div style="display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap">
+      <div>
+        <div class="muted">Inputs principais</div>
+        <div class="row" style="margin-top:8px">
+          <div>
+            <label>Valor Hora Normal (R$)</label>
+            <input id="horaNormal" type="number" step="0.01" value="0" />
+          </div>
+          <div>
+            <label>FG Monitor (R$)</label>
+            <input id="fgMonitor" type="number" step="0.01" value="0" />
+          </div>
+          <div>
+            <label>FG Líder (R$)</label>
+            <input id="fgLider" type="number" step="0.01" value="0" />
+          </div>
+          <div>
+            <label>FG Inspetor (R$)</label>
+            <input id="fgInspetor" type="number" step="0.01" value="0" />
+          </div>
+          <div>
+            <label>Gratificação Ensino (R$)</label>
+            <input id="fgEnsino" type="number" step="0.01" value="0" />
+          </div>
+        </div>
+      </div>
+
+      <div style="min-width:240px">
+        <div class="muted">Configurações de adicionais</div>
+        <div class="row" style="margin-top:8px">
+          <div>
+            <label>% Anuênio</label>
+            <input id="pctAnuenio" type="number" step="0.01" value="30" />
+          </div>
+          <div>
+            <label>% Triênio</label>
+            <input id="pctTrienio" type="number" step="0.01" value="9" />
+          </div>
+          <div>
+            <label>Adicional Noturno</label>
+            <input id="horasNoturnas" type="number" step="0.01" value="0" />
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div style="margin-top:12px;display:flex;gap:8px;align-items:center">
+      <button id="recalc">Recalcular agora</button>
+      <button id="reset" class="small">Resetar</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="muted">Tabela de possibilidades</div>
+    <table id="resultsTable">
+      <thead>
+        <tr>
+          <th>Possibilidade</th>
+          <th>Soma (R$)</th>
+          <th>Risco de Vida (80%)</th>
+          <th>Anuênio</th>
+          <th>Triênio</th>
+          <th>Valor Hora (Total / 220)</th>
+          <th>Adicional Noturno (20%)</th>
+        </tr>
+      </thead>
+      <tbody></tbody>
+    </table>
+    <div class="muted" style="margin-top:8px">Edite os valores no topo para recalcular. Configure as porcentagens de anuênio, triênio e a quantidade de horas noturnas para ajustar os cálculos.</div>
+  </div>
+
+  <script>
+    const combos = [
+      {name:"Hora Normal (apenas)", flags:[0,0,0,0]},
+      {name:"Hora Normal + FG Monitor", flags:[1,0,0,0]},
+      {name:"Hora Normal + FG Líder", flags:[0,1,0,0]},
+      {name:"Hora Normal + FG Inspetor", flags:[0,0,1,0]},
+      {name:"Hora Normal + Gratificação Ensino", flags:[0,0,0,1]},
+      {name:"Hora Normal + FG Monitor + FG Líder", flags:[1,1,0,0]},
+      {name:"Hora Normal + FG Monitor + FG Inspetor", flags:[1,0,1,0]},
+      {name:"Hora Normal + FG Monitor + Gratificação Ensino", flags:[1,0,0,1]},
+      {name:"Hora Normal + FG Líder + FG Inspetor", flags:[0,1,1,0]},
+      {name:"Hora Normal + FG Líder + Gratificação Ensino", flags:[0,1,0,1]},
+      {name:"Hora Normal + FG Inspetor + Gratificação Ensino", flags:[0,0,1,1]},
+      {name:"Hora Normal + FG Monitor + FG Líder + FG Inspetor", flags:[1,1,1,0]},
+      {name:"Hora Normal + FG Monitor + FG Líder + Gratificação Ensino", flags:[1,1,0,1]},
+      {name:"Hora Normal + FG Monitor + FG Inspetor + Gratificação Ensino", flags:[1,0,1,1]},
+      {name:"Hora Normal + FG Líder + FG Inspetor + Gratificação Ensino", flags:[0,1,1,1]},
+      {name:"Hora Normal + todas as FGs", flags:[1,1,1,1]}
+    ];
+
+    const horaNormal = document.getElementById('horaNormal');
+    const fgMonitor = document.getElementById('fgMonitor');
+    const fgLider = document.getElementById('fgLider');
+    const fgInspetor = document.getElementById('fgInspetor');
+    const fgEnsino = document.getElementById('fgEnsino');
+
+    const pctAnuenio = document.getElementById('pctAnuenio');
+    const pctTrienio = document.getElementById('pctTrienio');
+    const horasNoturnas = document.getElementById('horasNoturnas');
+
+    const tbody = document.querySelector('#resultsTable tbody');
+    const recalcBtn = document.getElementById('recalc');
+    const exportBtn = document.getElementById('exportCsv');
+    const downloadBtn = document.getElementById('downloadHtml');
+    const resetBtn = document.getElementById('reset');
+
+    function number(v){
+      const n = Number(v);
+      return Number.isFinite(n) ? n : 0;
+    }
+
+    function calcAll(){
+      tbody.innerHTML = '';
+      const base = number(horaNormal.value);
+      const vals = [number(fgMonitor.value), number(fgLider.value), number(fgInspetor.value), number(fgEnsino.value)];
+
+      const pctA = number(pctAnuenio.value) / 100;
+      const pctT = number(pctTrienio.value) / 100;
+      const horasN = number(horasNoturnas.value);
+
+      combos.forEach(c => {
+        const soma = base + c.flags.reduce((acc,f,i) => acc + (f ? vals[i] : 0), 0);
+        const riscoVida = soma * 0.8;
+        const anuenio = soma * pctA;
+        const trienio = soma * pctT;
+        const hora = soma / 220;
+        const adicionalNoturno = (hora * 1.2 - hora) * horasN; // 20% sobre valor hora, vezes horas
+
+        const tr = document.createElement('tr');
+        tr.innerHTML = `
+          <td>${c.name}</td>
+          <td>R$ ${soma.toFixed(2)}</td>
+          <td>R$ ${riscoVida.toFixed(2)}</td>
+          <td>R$ ${anuenio.toFixed(2)}</td>
+          <td>R$ ${trienio.toFixed(2)}</td>
+          <td>R$ ${hora.toFixed(4)}</td>
+          <td>R$ ${adicionalNoturno.toFixed(2)}</td>
+        `;
+        tbody.appendChild(tr);
+      });
+    }
+
+    [horaNormal, fgMonitor, fgLider, fgInspetor, fgEnsino, pctAnuenio, pctTrienio, horasNoturnas].forEach(el=>{
+      el.addEventListener('input', () => calcAll());
+    });
+
+    recalcBtn.addEventListener('click', calcAll);
+
+    resetBtn.addEventListener('click', ()=>{
+      horaNormal.value = 0; fgMonitor.value=0; fgLider.value=0; fgInspetor.value=0; fgEnsino.value=0;
+      pctAnuenio.value=30; pctTrienio.value=9; horasNoturnas.value=0;
+      calcAll();
+    });
+
+    calcAll();
+  </script>
+	<footer class="rodape">
+        	<p> Desenvolvido por <strong>Julia Bueno.</strong></p>
+   	</footer>
+</body>
+
+</html>
